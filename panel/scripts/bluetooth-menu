@@ -1,0 +1,74 @@
+#!/usr/bin/python3
+"""Fast Bluetooth popup: one cached BlueZ snapshot, no discovery on open."""
+import fcntl
+import os
+from pathlib import Path
+import subprocess
+import dbus
+
+
+def notify(message):
+    subprocess.run(['notify-send', 'Bluetooth', message], check=False)
+
+
+def main():
+    lock = open(Path(os.environ['XDG_RUNTIME_DIR']) / 'linux-panel-bluetooth.lock', 'w')
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        return
+    mouse = dict(line.split('=', 1) for line in subprocess.check_output(['xdotool', 'getmouselocation', '--shell'], text=True).splitlines())
+    screen = int(subprocess.check_output(['xdotool', 'getdisplaygeometry'], text=True).split()[0])
+    anchor = int(os.environ.get('POLYBAR_MENU_ANCHOR_X', mouse['X']))
+    screen = int(os.environ.get('POLYBAR_MENU_SCREEN_WIDTH', screen))
+    left = int(os.environ.get('POLYBAR_MENU_SCREEN_LEFT', '0'))
+    top = int(os.environ.get('POLYBAR_MENU_TOP', '43'))
+    x = max(left + 8, min(anchor - 175, left + screen - 358))
+    position = f'window {{ location: northwest; anchor: northwest; x-offset: {x}px; y-offset: {top}px; width: 350px; }} listview {{ lines: 6; }}'
+    bus = dbus.SystemBus()
+    try:
+        objects = dbus.Interface(bus.get_object('org.bluez', '/'), 'org.freedesktop.DBus.ObjectManager').GetManagedObjects(timeout=2)
+    except dbus.DBusException:
+        notify('Bluetooth is niet beschikbaar.')
+        return
+    rows, actions = [], []
+    def add(label, action):
+        rows.append(label)
+        actions.append(action)
+    adapters = [(p, i['org.bluez.Adapter1']) for p, i in objects.items() if 'org.bluez.Adapter1' in i]
+    for path, interfaces in objects.items():
+        d = interfaces.get('org.bluez.Device1')
+        if d is not None and (d.get('Paired') or d.get('Connected')):
+            name = str(d.get('Alias', 'Apparaat')).replace('\n', ' ').replace('\r', ' ')
+            connected = bool(d.get('Connected'))
+            add(('✓ ' if connected else '• ') + name + (' — verbreken' if connected else ' — verbinden'), ('device', path, connected))
+    for path, adapter in adapters:
+        powered = bool(adapter.get('Powered'))
+        suffix = ' (' + str(adapter.get('Alias', 'Adapter')).replace('\n', ' ') + ')' if len(adapters) > 1 else ''
+        add(('○ Bluetooth uitschakelen' if powered else '● Bluetooth inschakelen') + suffix, ('power', path, powered))
+    if not adapters:
+        add('Geen Bluetooth-adapter gevonden', ('none',))
+    add('＋ Nieuw apparaat koppelen / instellingen', ('settings',))
+    result = subprocess.run(['rofi', '-theme', str(Path(__file__).resolve().parent.parent / 'config/rofi/bluetooth.rasi'), '-window-title', 'Panel Bluetooth', '-pid', str(Path(os.environ['XDG_RUNTIME_DIR']) / 'linux-panel-bluetooth-rofi.pid'), '-dmenu', '-no-custom', '-i', '-format', 'i', '-p', 'Bluetooth', '-theme-str', position], input='\n'.join(rows)+'\n', text=True, capture_output=True)
+    if result.returncode:
+        return
+    try:
+        action = actions[int(result.stdout.strip())]
+    except (ValueError, IndexError):
+        return
+    try:
+        if action[0] == 'settings':
+            subprocess.Popen(['/usr/bin/blueman-manager'], start_new_session=True)
+        elif action[0] == 'power':
+            dbus.Interface(bus.get_object('org.bluez', action[1]), 'org.freedesktop.DBus.Properties').Set('org.bluez.Adapter1', 'Powered', dbus.Boolean(not action[2]), timeout=5)
+        elif action[0] == 'device':
+            device = dbus.Interface(bus.get_object('org.bluez', action[1]), 'org.bluez.Device1')
+            notify('Verbinding verbreken…' if action[2] else 'Verbinden…')
+            (device.Disconnect if action[2] else device.Connect)(timeout=20)
+            notify('Verbinding verbroken' if action[2] else 'Verbonden')
+    except dbus.DBusException:
+        notify('Actie mislukt. Controleer de Bluetooth-instellingen.')
+
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Polybar
+Exec=sh -c "sleep 1; pgrep -x polybar >/dev/null || setsid -f polybar main >/tmp/polybar-main.log 2>&1"
+Terminal=false
+X-GNOME-Autostart-enabled=true

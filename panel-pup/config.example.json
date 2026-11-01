@@ -1,0 +1,14 @@
+{
+  "left": 630,
+  "right": 1040,
+  "bar_top": 0,
+  "bar_height": 40,
+  "pet_height": 38,
+  "speed": 38,
+  "sleep_after": 40,
+  "color": "brown",
+  "sprite_faces": "right",
+  "on_click": "run",
+  "on_double_click": "hop",
+  "on_middle_click": "nap"
+}

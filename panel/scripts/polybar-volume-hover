@@ -1,0 +1,371 @@
+#!/usr/bin/python3
+"""Low-latency X11 hover detection for the existing slim Polybar volume popup.
+
+Hover menus for Wi-Fi, Bluetooth and volume, plus fullscreen panel hiding.
+"""
+import ctypes
+import ctypes.util
+import fcntl
+import json
+import os
+from pathlib import Path
+import signal
+import socket
+import subprocess
+import sys
+import time
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from panel_geometry import locate_regions
+
+# Resolve symlinks so the installed launcher finds its project sibling.
+popup_path = Path(__file__).resolve().parent / "volume_slider.py"
+geometry = None
+regions = {}
+last_geometry = 0.0
+
+# The FD is close-on-exec: the popup/YAD can never inherit the watcher lock.
+lock_dir = os.environ.get('XDG_RUNTIME_DIR', '/tmp')
+lock_fd = os.open(os.path.join(lock_dir, 'polybar-volume-hover-v2.lock'),
+                  os.O_CREAT | os.O_RDWR, 0o600)
+try:
+    fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+except BlockingIOError:
+    sys.exit(0)
+
+x11 = ctypes.CDLL(ctypes.util.find_library('X11'))
+x11.XOpenDisplay.argtypes = [ctypes.c_char_p]
+x11.XOpenDisplay.restype = ctypes.c_void_p
+x11.XDefaultRootWindow.argtypes = [ctypes.c_void_p]
+x11.XDefaultRootWindow.restype = ctypes.c_ulong
+x11.XQueryPointer.argtypes = [
+    ctypes.c_void_p, ctypes.c_ulong,
+    ctypes.POINTER(ctypes.c_ulong), ctypes.POINTER(ctypes.c_ulong),
+    ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_uint),
+]
+x11.XQueryPointer.restype = ctypes.c_int
+x11.XCloseDisplay.argtypes = [ctypes.c_void_p]
+
+display = x11.XOpenDisplay(None)
+if not display:
+    sys.exit('Cannot connect to X11 display.')
+root = x11.XDefaultRootWindow(display)
+root_return = ctypes.c_ulong()
+child_return = ctypes.c_ulong()
+root_x = ctypes.c_int()
+root_y = ctypes.c_int()
+win_x = ctypes.c_int()
+win_y = ctypes.c_int()
+mask = ctypes.c_uint()
+
+# Read fullscreen state directly from X11, without spawning a process per poll.
+x11.XInternAtom.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int]
+x11.XInternAtom.restype = ctypes.c_ulong
+x11.XGetWindowProperty.argtypes = [ctypes.c_void_p, ctypes.c_ulong, ctypes.c_ulong,
+    ctypes.c_long, ctypes.c_long, ctypes.c_int, ctypes.c_ulong,
+    ctypes.POINTER(ctypes.c_ulong), ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_ulong), ctypes.POINTER(ctypes.c_ulong),
+    ctypes.POINTER(ctypes.POINTER(ctypes.c_ubyte))]
+x11.XGetWindowProperty.restype = ctypes.c_int
+x11.XFree.argtypes = [ctypes.c_void_p]
+error_type = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p)
+ignore_x_error = error_type(lambda _display, _event: 0)
+x11.XSetErrorHandler.argtypes = [error_type]
+x11.XSetErrorHandler(ignore_x_error)
+active_atom = x11.XInternAtom(display, b'_NET_ACTIVE_WINDOW', 0)
+state_atom = x11.XInternAtom(display, b'_NET_WM_STATE', 0)
+fullscreen_atom = x11.XInternAtom(display, b'_NET_WM_STATE_FULLSCREEN', 0)
+
+
+def property_values(window, atom):
+    actual = ctypes.c_ulong()
+    fmt = ctypes.c_int()
+    count, remaining = ctypes.c_ulong(), ctypes.c_ulong()
+    data = ctypes.POINTER(ctypes.c_ubyte)()
+    result = x11.XGetWindowProperty(display, window, atom, 0, 1024, 0, 0,
+        ctypes.byref(actual), ctypes.byref(fmt), ctypes.byref(count),
+        ctypes.byref(remaining), ctypes.byref(data))
+    try:
+        if result or fmt.value != 32 or not data:
+            return []
+        return list(ctypes.cast(data, ctypes.POINTER(ctypes.c_ulong))[:count.value])
+    finally:
+        if data: x11.XFree(data)
+
+
+def fullscreen():
+    active = property_values(root, active_atom)
+    return bool(active and fullscreen_atom in property_values(active[0], state_atom))
+
+
+running = True
+popup = None
+popup_visible = False
+was_fullscreen = None
+last_fullscreen_check = 0
+socket_path = Path(lock_dir) / 'polybar-volume-popup.sock'
+fullscreen_marker = Path(lock_dir) / 'linux-panel-fullscreen'
+client = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+client.setblocking(False)
+log = open(Path(lock_dir) / 'polybar-volume-popup.log', 'a')
+
+
+def stop(_signum, _frame):
+    global running
+    running = False
+
+
+def send(message):
+    try:
+        client.sendto(json.dumps(message).encode(), str(socket_path))
+        return True
+    except OSError:
+        return False
+
+
+def close_popup():
+    global popup_visible
+    if popup_visible:
+        send({'action': 'hide'})
+    popup_visible = False
+
+
+def ensure_popup():
+    global popup, popup_visible
+    if popup is None or popup.poll() is not None:
+        popup_visible = False
+        popup = subprocess.Popen(['/usr/bin/python3', str(popup_path), '0', '43', '0', '--server'],
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=log,
+            start_new_session=True, close_fds=True)
+
+
+def pointer():
+    ok = x11.XQueryPointer(display, root,
+        ctypes.byref(root_return), ctypes.byref(child_return),
+        ctypes.byref(root_x), ctypes.byref(root_y),
+        ctypes.byref(win_x), ctypes.byref(win_y), ctypes.byref(mask))
+    return (root_x.value, root_y.value) if ok else None
+
+
+# Rofi menus get their own pidfiles, so hovering never closes another launcher.
+active_menu = None
+blocked_menu = None
+menu_jobs = []
+script_dir = Path(__file__).resolve().parent
+x11.XGetGeometry.argtypes = [ctypes.c_void_p, ctypes.c_ulong,
+    ctypes.POINTER(ctypes.c_ulong), ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint),
+    ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint)]
+x11.XGetGeometry.restype = ctypes.c_int
+x11.XTranslateCoordinates.argtypes = [ctypes.c_void_p, ctypes.c_ulong, ctypes.c_ulong,
+    ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_ulong)]
+x11.XTranslateCoordinates.restype = ctypes.c_int
+
+
+def window_rect(xid):
+    parent = ctypes.c_ulong()
+    px, py = ctypes.c_int(), ctypes.c_int()
+    width, height, border, depth = (ctypes.c_uint() for _ in range(4))
+    if not x11.XGetGeometry(display, xid, ctypes.byref(parent), ctypes.byref(px), ctypes.byref(py),
+        ctypes.byref(width), ctypes.byref(height), ctypes.byref(border), ctypes.byref(depth)):
+        return None
+    child = ctypes.c_ulong()
+    if not x11.XTranslateCoordinates(display, xid, root, 0, 0, ctypes.byref(px), ctypes.byref(py), ctypes.byref(child)):
+        return None
+    return px.value, py.value, width.value, height.value
+
+
+flock_visible=False
+flock_runtime=Path(lock_dir)/('desktop-boids-'+str(os.getuid()))
+def flock_message(action,region=None):
+    global flock_visible
+    msg={'action':action}
+    if region:
+        l,r,t,b,sl,sw=region
+        msg.update(x=max(sl+8,min((l+r)//2-170,sl+sw-348)),y=b+5)
+    try:
+        client.sendto(json.dumps(msg).encode(),str(flock_runtime/'controls.sock'))
+        flock_visible=action=='show'
+    except OSError:flock_visible=False
+
+
+
+def menu_pid(kind):
+    try:
+        pid = int((Path(lock_dir) / f'linux-panel-{kind}-rofi.pid').read_text().strip())
+        args = (Path('/proc') / str(pid) / 'cmdline').read_bytes().split(b'\0')
+        if Path(os.fsdecode(args[0])).name != 'rofi': return None
+        return pid
+    except (OSError, ValueError):
+        return None
+
+
+def close_menu():
+    global active_menu
+    if active_menu is None: return
+    pid = menu_pid(active_menu['kind'])
+    if pid:
+        try: os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError: pass
+    elif not active_menu['seen'] and active_menu['process'].poll() is None:
+        try: os.killpg(active_menu['process'].pid, signal.SIGTERM)
+        except ProcessLookupError: pass
+    active_menu = None
+
+
+def start_menu(kind, region):
+    global active_menu
+    left, right, top, bottom, screen_left, screen_width = region
+    env = dict(os.environ)
+    env.update(POLYBAR_MENU_ANCHOR_X=str((left+right)//2),
+               POLYBAR_MENU_TOP=str(bottom+5), POLYBAR_MENU_SCREEN_LEFT=str(screen_left),
+               POLYBAR_MENU_SCREEN_WIDTH=str(screen_width))
+    process = subprocess.Popen([str(script_dir / ('wifi-menu.sh' if kind == 'wifi' else 'bluetooth-menu'))],
+        env=env, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=log,
+        start_new_session=True, close_fds=True)
+    menu_jobs.append(process)
+    active_menu = dict(kind=kind, process=process, started=time.monotonic(),
+                       pid=None, xid=None, rect=None, seen=False, scan=0,
+                       fallback=(max(screen_left+8, min((left+right)//2-175, screen_left+screen_width-358)), bottom+5, 350, 600))
+
+
+def poll_menu(now):
+    global active_menu, blocked_menu
+    menu_jobs[:] = [job for job in menu_jobs if job.poll() is None]
+    if active_menu is None: return
+    m = active_menu
+    if now-m['scan'] < .07: return
+    m['scan'] = now
+    pid = menu_pid(m['kind'])
+    if pid != m['pid']:
+        m['pid'], m['xid'] = pid, None
+    if pid and not m['xid']:
+        found = subprocess.run(['xdotool', 'search', '--all', '--onlyvisible', '--pid', str(pid), '--class', 'Rofi'],
+            capture_output=True, text=True, timeout=1).stdout.split()
+        if found: m['xid'] = int(found[0])
+    m['rect'] = window_rect(m['xid']) if pid and m['xid'] else None
+    if m['rect']: m['seen'] = True
+    if (m['seen'] and not m['rect']) or m['process'].poll() is not None:
+        # A selection may still be connecting a network or requesting a password.
+        # Detach it; only its initial hover menu is subject to mouse-leave closing.
+        blocked_menu = m['kind']
+        active_menu = None
+
+
+signal.signal(signal.SIGTERM, stop)
+signal.signal(signal.SIGINT, stop)
+try:
+    ensure_popup()
+    while running:
+        now = time.monotonic()
+        if now - last_fullscreen_check > .1:
+            hidden = fullscreen()
+            if hidden != was_fullscreen:
+                close_popup()
+                close_menu()
+                flock_message('hide')
+                if hidden:
+                    fullscreen_marker.touch()
+                else:
+                    fullscreen_marker.unlink(missing_ok=True)
+                subprocess.run(['polybar-msg', 'cmd', 'hide' if hidden else 'show'],
+                    stdout=subprocess.DEVNULL, stderr=log, timeout=2)
+                was_fullscreen = hidden
+                last_geometry = 0
+            last_fullscreen_check = now
+        if was_fullscreen:
+            time.sleep(.025)
+            continue
+        ensure_popup()
+        if now - last_geometry > .5:
+            try:
+                regions = locate_regions()
+                geometry = regions.get('volume')
+            except Exception as exc:
+                print(f'Volume geometry: {exc}', file=sys.stderr, flush=True)
+                geometry = None
+                regions = {}
+            last_geometry = now
+        if geometry is None:
+            close_popup()
+            close_menu()
+            time.sleep(.1)
+            continue
+        left, right, bar_top, bar_bottom, screen_left, screen_width = geometry
+        anchor = (left + right) // 2
+        popup_x = max(screen_left, min(anchor - 140, screen_left + screen_width - 280))
+        popup_top = bar_bottom + 5
+        poll_menu(now)
+        pos = pointer()
+        if pos:
+            x, y = pos
+            hovered = next((name for name, r in regions.items()
+                if r[0] <= x <= r[1] and r[2] <= y <= r[3]), None)
+            if hovered=='flock':
+                close_popup();close_menu()
+                if not flock_visible:flock_message('show',regions['flock'])
+                time.sleep(.015)
+                continue
+            if flock_visible:
+                try:fx,fy,fw,fh=json.loads((flock_runtime/'controls.geometry').read_text())
+                except (OSError,ValueError):fx,fy,fw,fh=0,43,340,500
+                if not hovered and fx-3<=x<=fx+fw+3 and bar_bottom<=y<=fy+fh+3:
+                    close_popup();close_menu();time.sleep(.015);continue
+                flock_message('hide')
+            if blocked_menu and hovered != blocked_menu:
+                blocked_menu = None
+            if active_menu:
+                m = active_menu
+                rect = m['rect'] or m['fallback']
+                mx, my, mw, mh = rect
+                on_menu = mx-3 <= x <= mx+mw+3 and bar_bottom <= y <= my+mh+3
+                if hovered and hovered != m['kind']:
+                    close_menu()
+                elif hovered != m['kind'] and not on_menu:
+                    close_menu()
+            if hovered in ('wifi', 'bluetooth'):
+                close_popup()
+                if active_menu is None and blocked_menu != hovered:
+                    start_menu(hovered, regions[hovered])
+                time.sleep(.015)
+                continue
+            if active_menu:
+                close_popup()
+                time.sleep(.015)
+                continue
+            on_icon = left <= x <= right and bar_top <= y <= bar_bottom
+            popup_width, popup_height = 280, 350
+            if popup_visible:
+                try:
+                    popup_x, popup_top, popup_width, popup_height = json.loads(
+                        (Path(lock_dir) / 'polybar-volume-popup.geometry').read_text())
+                except (OSError, ValueError):
+                    pass
+            on_popup = popup_visible and popup_x - 3 <= x <= popup_x + popup_width + 3 and bar_bottom <= y <= popup_top + popup_height + 3
+            if popup_visible and not (on_icon or on_popup):
+                close_popup()
+            if on_icon and not popup_visible:
+                popup_visible = send(dict(action='show', x=popup_x, y=popup_top,
+                    left=screen_left, width=screen_width))
+        time.sleep(.015)
+finally:
+    flock_message('hide')
+    close_menu()
+    close_popup()
+    send({'action': 'quit'})
+    if popup is not None and popup.poll() is None:
+        try:
+            popup.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            os.killpg(popup.pid, signal.SIGTERM)
+            popup.wait(timeout=1)
+    fullscreen_marker.unlink(missing_ok=True)
+    if was_fullscreen:
+        subprocess.run(['polybar-msg', 'cmd', 'show'], stdout=subprocess.DEVNULL, stderr=log)
+    client.close()
+    log.close()
+    x11.XCloseDisplay(display)
+    os.close(lock_fd)

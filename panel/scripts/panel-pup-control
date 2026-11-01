@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+"""Manage the existing Panel Pup process without changing its autostart.
+
+This file is meant to be edited freely. It does not modify the dog artwork.
+"""
+import os
+from pathlib import Path
+import signal
+import subprocess
+import sys
+
+APP = Path.home() / '.local/share/panel-pup'
+PUP = APP / 'panel_pup.py'
+LOG = Path.home() / '.cache/panel-pup.log'
+
+
+def dog_pids():
+    """Look only for this user's running Python process with panel_pup.py as a script."""
+    result = []
+    proc = Path('/proc')
+    if not proc.is_dir():
+        return result
+    for path in proc.iterdir():
+        if not path.name.isdecimal():
+            continue
+        try:
+            if path.stat().st_uid != os.getuid():
+                continue
+            args = (path / 'cmdline').read_bytes().decode('utf8', errors='replace').strip('\0').split('\0')
+            if not args or not Path(args[0]).name.startswith('python'):
+                continue
+            if any(a == 'panel_pup.py' or a.endswith('/panel_pup.py') for a in args[1:]):
+                result.append(int(path.name))
+        except (OSError, ValueError):
+            continue
+    return result
+
+
+def main():
+    if len(sys.argv) != 2 or sys.argv[1] not in {'status', 'toggle', 'start', 'stop'}:
+        print('Usage: panel-pup-control {status|toggle|start|stop}', file=sys.stderr)
+        return 2
+    action = sys.argv[1]
+    pids = dog_pids()
+    if action == 'status':
+        print('Pup: ON' if pids else 'Pup: OFF')
+        return 0
+    if action == 'toggle':
+        action = 'stop' if pids else 'start'
+    if action == 'stop':
+        for pid in pids:
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+        return 0
+    if pids:
+        return 0
+    if not PUP.is_file():
+        print(f'Panel Pup not found: {PUP}', file=sys.stderr)
+        return 1
+    LOG.parent.mkdir(parents=True, exist_ok=True)
+    with LOG.open('ab') as log:
+        subprocess.Popen(['/usr/bin/python3', str(PUP)], cwd=str(APP),
+                         stdin=subprocess.DEVNULL, stdout=log,
+                         stderr=subprocess.STDOUT, start_new_session=True,
+                         close_fds=True)
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

@@ -1,0 +1,93 @@
+configuration {
+    show-icons: true;
+    icon-theme: "Papirus";
+    drun-display-format: "{name}";
+    font: "DejaVu Sans 10";
+    kb-cancel: "Escape,Control+g,Control+bracketleft,Control+Escape";
+}
+
+@theme "@PANEL_DIR@/config/rofi/panel.rasi"
+
+
+
+window {
+    location: northwest;
+    anchor: northwest;
+    x-offset: 12px;
+    y-offset: 43px;
+    width: 355px;
+
+    background-color: @bg;
+    border: 1px;
+    border-color: @border;
+    border-radius: 0px;
+    padding: 12px;
+}
+
+mainbox {
+    children: [ inputbar, listview ];
+    spacing: 12px;
+    background-color: transparent;
+}
+
+inputbar {
+    children: [ entry ];
+    background-color: @panel;
+    border-radius: 0px;
+    padding: 12px;
+}
+
+entry {
+    background-color: transparent;
+    text-color: @fg;
+    placeholder: "Zoek een app...";
+    placeholder-color: @muted;
+}
+
+listview {
+    lines: 8;
+    columns: 1;
+    fixed-height: false;
+    scrollbar: false;
+    spacing: 4px;
+    background-color: transparent;
+}
+
+element {
+    children: [ element-icon, element-text ];
+    spacing: 12px;
+    padding: 10px;
+    border-radius: 0px;
+    background-color: transparent;
+    text-color: @fg;
+}
+
+element selected {
+    background-color: @selected;
+    text-color: @fg;
+}
+
+element-icon {
+    size: 24px;
+    background-color: transparent;
+}
+
+element-text {
+    background-color: transparent;
+    text-color: inherit;
+    vertical-align: 0.5;
+}
+
+element normal.normal, element alternate.normal, element normal.active, element alternate.active {
+    background-color: transparent;
+    text-color: @fg;
+}
+element selected.normal, element selected.active, element selected.urgent {
+    background-color: @selected;
+    text-color: @fg;
+}
+element-text, element-icon {
+    background-color: transparent;
+    text-color: inherit;
+}
+inputbar, header, message { expand: false; }

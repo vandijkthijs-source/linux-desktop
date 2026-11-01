@@ -1,0 +1,12 @@
+* {
+    bg: #20262e;
+    panel: #2c3540;
+    selected: #364150;
+    fg: #f5f7fb;
+    muted: #aeb9c8;
+    accent: #4da4ff;
+    success: #77d19b;
+    border: #3b4654;
+    background-color: transparent;
+    text-color: @fg;
+}

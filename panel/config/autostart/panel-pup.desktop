@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Panel Pup
+Comment=My little dog living on Polybar
+Exec=@HOME@/.local/share/panel-pup/start.sh
+Terminal=false
+Hidden=false
+X-GNOME-Autostart-enabled=true

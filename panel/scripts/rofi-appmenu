@@ -1,0 +1,15 @@
+#!/bin/bash
+exec rofi -kb-cancel "Escape,Super_L,Super_R" -show drun -show-icons \
+  -drun-display-format '{name}' \
+  -theme-str '
+window {
+  location: northwest;
+  anchor: northwest;
+  width: 380px;
+  x-offset: 12px;
+  y-offset: 43px;
+}
+listview {
+  lines: 6;
+  columns: 1;
+}'

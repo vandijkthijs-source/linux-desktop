@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Polybar Volume Hover
+Comment=Volume slider beneath the current Polybar volume icon
+Exec=@HOME@/.local/bin/polybar-volume-hover
+Terminal=false
+Hidden=false
+X-GNOME-Autostart-enabled=true

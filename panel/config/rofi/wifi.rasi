@@ -1,0 +1,139 @@
+configuration {
+    show-icons: true;
+    icon-theme: "Papirus";
+    font: "DejaVu Sans 10";
+    kb-cancel: "Escape,Control+g,Control+bracketleft,Control+Escape";
+}
+
+@theme "@PANEL_DIR@/config/rofi/panel.rasi"
+
+
+
+window {
+    location: northwest;
+    anchor: northwest;
+    width: 350px;
+    y-offset: 43px;
+    background-color: @bg;
+    border: 1px;
+    border-color: @border;
+    border-radius: 0px;
+    padding: 12px;
+}
+
+mainbox {
+    children: [header, message, inputbar, textbox-section, listview];
+    background-color: transparent;
+    spacing: 12px;
+}
+
+header {
+    orientation: horizontal;
+    children: [textbox-wifi-icon, textbox-heading];
+    spacing: 10px;
+}
+
+textbox-wifi-icon {
+    content: "";
+    font: "FontAwesome 14";
+    text-color: @success;
+    background-color: transparent;
+    expand: false;
+}
+
+textbox-heading {
+    content: "Wi-Fi-netwerken";
+    font: "DejaVu Sans Bold 12";
+    text-color: @fg;
+    background-color: transparent;
+    expand: false;
+}
+
+message {
+    background-color: @selected;
+    padding: 13px;
+    border-radius: 0px;
+}
+
+textbox {
+    background-color: transparent;
+    text-color: @fg;
+}
+
+inputbar {
+    children: [textbox-search, entry];
+    background-color: @panel;
+    padding: 12px;
+    border-radius: 0px;
+    spacing: 10px;
+}
+
+textbox-search {
+    content: "";
+    font: "FontAwesome 13";
+    text-color: @accent;
+    background-color: transparent;
+    expand: false;
+}
+
+entry {
+    background-color: transparent;
+    text-color: @fg;
+    placeholder: "Zoek een netwerk...";
+    placeholder-color: @muted;
+}
+
+textbox-section {
+    content: "BESCHIKBARE NETWERKEN";
+    font: "DejaVu Sans Bold 9";
+    text-color: @muted;
+    background-color: transparent;
+    padding: 4px 2px;
+    expand: false;
+}
+
+listview {
+    lines: 9;
+    columns: 1;
+    fixed-height: false;
+    scrollbar: false;
+    spacing: 4px;
+    background-color: transparent;
+}
+
+element {
+    children: [element-icon, element-text];
+    background-color: transparent;
+    border-radius: 0px;
+    padding: 10px;
+    spacing: 12px;
+}
+
+element selected {
+    background-color: @selected;
+}
+
+element-icon {
+    size: 20px;
+    background-color: transparent;
+}
+
+element-text {
+    background-color: transparent;
+    text-color: @fg;
+    vertical-align: 0.5;
+}
+
+element normal.normal, element alternate.normal, element normal.active, element alternate.active {
+    background-color: transparent;
+    text-color: @fg;
+}
+element selected.normal, element selected.active, element selected.urgent {
+    background-color: @selected;
+    text-color: @fg;
+}
+element-text, element-icon {
+    background-color: transparent;
+    text-color: inherit;
+}
+inputbar, header, message { expand: false; }

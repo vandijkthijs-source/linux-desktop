@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+exec 9>"${XDG_RUNTIME_DIR:-/tmp}/polybar-volume-popup.lock"
+flock -n 9 || exit 0
+xidfile="${XDG_RUNTIME_DIR:-/tmp}/polybar-volume-popup.xid"
+rm -f "$xidfile" "${XDG_RUNTIME_DIR:-/tmp}/polybar-volume-popup.geometry"
+trap 'rm -f "$xidfile" "${XDG_RUNTIME_DIR:-/tmp}/polybar-volume-popup.geometry"' EXIT
+
+anchor=${POLYBAR_VOLUME_ANCHOR_X:-$(xdotool getmouselocation --shell | sed -n 's/^X=//p')}
+[[ "$anchor" =~ ^[0-9]+$ ]] || exit 1
+screen_w=${POLYBAR_VOLUME_SCREEN_WIDTH:-$(xdotool getdisplaygeometry | awk '{print $1}')}
+left=${POLYBAR_VOLUME_SCREEN_LEFT:-0}
+top=${POLYBAR_VOLUME_TOP:-43}
+x=$((anchor - 140))
+((x < left)) && x=$left
+((x > left + screen_w - 280)) && x=$((left + screen_w - 280))
+vol=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{printf "%.0f", $2 * 100}')
+
+[[ "$vol" =~ ^[0-9]+$ ]] || exit 1
+((vol > 100)) && vol=100
+
+/usr/bin/python3 "$(dirname "$(readlink -f "$0")")/volume_slider.py" "$x" "$top" "$vol" |
+while read -r value; do
+  value=${value%%.*}
+  [[ "$value" =~ ^[0-9]+$ ]] || continue
+  wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ "${value}%"
+  if ((value > 0)); then
+    wpctl set-mute @DEFAULT_AUDIO_SINK@ 0
+  fi
+done
