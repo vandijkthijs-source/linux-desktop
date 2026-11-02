@@ -13,7 +13,7 @@ import socket
 import sys
 import time
 from PyQt5.QtCore import Qt, QTimer, QPointF, QRect, QSocketNotifier
-from PyQt5.QtGui import QColor, QPainter, QPolygonF, QRegion
+from PyQt5.QtGui import QColor, QPainter, QPolygonF, QRegion, QPixmap
 from PyQt5.QtWidgets import QApplication, QWidget
 from settings import load, save
 from controls import Controls
@@ -102,6 +102,7 @@ class Wallpaper(QWidget):
         self.setAttribute(Qt.WA_ShowWithoutActivating)
         self.setWindowTitle('Desktop Boids')
         self.x=X11(); self.covered_since=None; self.paused=False; self.frames=0; self.sim_seconds=0.; self.started=time.monotonic()
+        self.sprite_size=None;self.sprites=[]
         self.cfg=load(); self.boids=[]; self.rng=random.Random(42); rng=self.rng
         geom=QApplication.primaryScreen().virtualGeometry(); self.setGeometry(geom)
         for i in range(self.cfg['count']):
@@ -196,15 +197,15 @@ class Wallpaper(QWidget):
         elif self.isVisible():self.hide()
         if paused: self.timer.stop()
         else:
-            interval=round(1000/min(self.cfg['fps'],10)) if battery else round(1000/self.cfg['fps'])
+            interval=round(1000/min(self.cfg['fps'],18)) if battery else round(1000/self.cfg['fps'])
             if not self.timer.isActive() or self.timer.interval()!=interval:
                 self.last=time.monotonic(); self.timer.start(interval)
-        (runtime/'status.json').write_text(json.dumps({'paused':paused,'enabled':self.cfg['enabled'],'covered':covered,'fps_limit':min(self.cfg['fps'],10) if battery else self.cfg['fps'],'boids':len(self.boids),'frames':self.frames,'flight_bounds':[self.flight_rect().left(),self.flight_rect().top(),self.flight_rect().right(),self.flight_rect().bottom()],'positions_bounds':[round(min(b[0] for b in self.boids),2),round(min(b[1] for b in self.boids),2),round(max(b[0] for b in self.boids),2),round(max(b[1] for b in self.boids),2)],'simulation_seconds':round(self.sim_seconds,4),'uptime':round(time.monotonic()-self.started,1)}))
+        (runtime/'status.json').write_text(json.dumps({'paused':paused,'enabled':self.cfg['enabled'],'covered':covered,'fps_limit':min(self.cfg['fps'],18) if battery else self.cfg['fps'],'boids':len(self.boids),'frames':self.frames,'flight_bounds':[self.flight_rect().left(),self.flight_rect().top(),self.flight_rect().right(),self.flight_rect().bottom()],'positions_bounds':[round(min(b[0] for b in self.boids),2),round(min(b[1] for b in self.boids),2),round(max(b[0] for b in self.boids),2),round(max(b[1] for b in self.boids),2)],'simulation_seconds':round(self.sim_seconds,4),'uptime':round(time.monotonic()-self.started,1)}))
     def step(self):
         now=time.monotonic(); dt=min(now-self.last,.1); self.last=now; begin=time.perf_counter()
         old=[b[:] for b in self.boids]; W=self.width(); H=self.height(); bounds=self.flight_rect()
         # A spatial grid keeps neighbour work local as the flock grows.
-        radius=self.cfg['radius'];grid={}
+        radius=self.cfg['radius'];radius_squared=radius*radius;separation_squared=min(25,radius*.3)**2;grid={}
         for i,b in enumerate(old): grid.setdefault((int(b[0]//radius),int(b[1]//radius)),[]).append(i)
         for i,b in enumerate(self.boids):
             px,py,vx,vy=old[i]; n=0; ax=ay=cx=cy=sx=sy=0.
@@ -214,9 +215,9 @@ class Wallpaper(QWidget):
                     for j in grid.get((xx,yy),()):
                         if i==j: continue
                         ox,oy,ovx,ovy=old[j]; dx=ox-px; dy=oy-py; d2=dx*dx+dy*dy
-                        if 0<d2<radius*radius:
+                        if 0<d2<radius_squared:
                             n+=1; ax+=ovx; ay+=ovy; cx+=dx; cy+=dy
-                            if d2<min(25,radius*.3)**2: sx-=dx/max(d2,1); sy-=dy/max(d2,1)
+                            if d2<separation_squared: sx-=dx/max(d2,1); sy-=dy/max(d2,1)
             if n:
                 vx+=((ax/n-vx)*.65*self.cfg['alignment']/100+cx/n*.35*self.cfg['cohesion']/100+sx*650*self.cfg['separation']/100)*dt
                 vy+=((ay/n-vy)*.65*self.cfg['alignment']/100+cy/n*.35*self.cfg['cohesion']/100+sy*650*self.cfg['separation']/100)*dt
@@ -224,16 +225,25 @@ class Wallpaper(QWidget):
                 (bounds.left(),bounds.top(),bounds.right(),bounds.bottom()),
                 dt,self.cfg['speed'],1 if i%2==0 else -1)
         self.update(); self.frames+=1; self.sim_seconds+=time.perf_counter()-begin
+    def build_sprites(self):
+        size=self.cfg['size']
+        if self.sprite_size==size:return
+        self.sprite_size=size;self.sprites=[];self.sprite_pad=size+2
+        for color in ('#8bb9c5','#b9d5cb','#c7ba94'):
+            directions=[]
+            for index in range(64):
+                angle=index*math.tau/64;ux=math.cos(angle)*size/7;uy=math.sin(angle)*size/7
+                image=QPixmap(self.sprite_pad*2+1,self.sprite_pad*2+1);image.fill(Qt.transparent)
+                p=QPainter(image);p.setRenderHint(QPainter.Antialiasing);p.setPen(Qt.NoPen);p.setBrush(QColor(color));p.translate(self.sprite_pad,self.sprite_pad)
+                p.drawPolygon(QPolygonF([QPointF(ux*7,uy*7),QPointF(-ux*5-uy*3,-uy*5+ux*3),QPointF(-ux*2,-uy*2),QPointF(-ux*5+uy*3,-uy*5-ux*3)]));p.end();directions.append(image)
+            self.sprites.append(directions)
     def paintEvent(self,event):
         if not self.cfg['enabled']:return
-        p=QPainter(self); p.setRenderHint(QPainter.Antialiasing)
-        p.setPen(Qt.NoPen)
-        colors=[QColor('#8bb9c5'),QColor('#b9d5cb'),QColor('#c7ba94')]
+        # Antialias the tiny bird shapes once, rather than hundreds per frame.
+        self.build_sprites();p=QPainter(self);pad=self.sprite_pad
         for i,(x,y,vx,vy) in enumerate(self.boids):
-            if not event.region().intersects(QRect(int(x)-24,int(y)-24,49,49)): continue
-            length=math.hypot(vx,vy) or 1; ux,uy=vx/length,vy/length
-            scale=self.cfg['size']/7;ux*=scale;uy*=scale
-            p.setBrush(colors[i%3]); p.drawPolygon(QPolygonF([QPointF(x+ux*7,y+uy*7),QPointF(x-ux*5-uy*3,y-uy*5+ux*3),QPointF(x-ux*2,y-uy*2),QPointF(x-ux*5+uy*3,y-uy*5-ux*3)]))
+            direction=round(math.atan2(vy,vx)*64/math.tau)%64
+            p.drawPixmap(round(x)-pad,round(y)-pad,self.sprites[i%3][direction])
 
 app=QApplication(sys.argv)
 app.setQuitOnLastWindowClosed(False)

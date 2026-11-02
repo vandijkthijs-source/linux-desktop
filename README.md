@@ -5,7 +5,7 @@ Boids als bewegende achtergrond en een kleine hond op een XFCE/Polybar-paneel. G
 - **Flock: ON/OFF** naast **Pup: ON/OFF**; klikken schakelt ze om.
 - Hover over Flock voor direct beschikbare schuifregelaars: aantal (16–600), snelheid, afstand houden, richting volgen, bij elkaar blijven, zichtafstand, grootte en FPS. Instellingen blijven lokaal bewaard.
 - De flock blijft onder apps en boven de wallpaper. Desktopiconen blijven aanklikbaar. Richtingsbesturing laat vogels met behouden snelheid wegdraaien van de rand, in plaats van tegen de grens af te remmen. Ze blijven onder het paneel en binnen het scherm.
-- Automatisch pauzeren na twee seconden volledig bedekt/fullscreen; hervatten zodra de desktop zichtbaar is. Op batterij maximaal 10 FPS.
+- Automatisch pauzeren na twee seconden volledig bedekt/fullscreen; hervatten zodra de desktop zichtbaar is. Op batterij maximaal 18 FPS.
 - Pup heeft beweging, slapen, interacties en een eigen rechtermuismenu. De paneelknop start/stopt het bestaande hondproces.
 - De optionele volledige paneelconfig bevat ook de bestaande snelle hovermenu's voor geluid, wifi en Bluetooth en verbergt het paneel bij fullscreen.
 
@@ -58,3 +58,5 @@ Randbesturing bijgewerkt op 2 november 2026: hoekverandering per frame is begren
 python3 -m unittest discover -s boids/tests -v
 python3 -m unittest discover -s panel-pup/tests -v
 ```
+
+Rendering geoptimaliseerd op 2 november 2026: vogelvormen worden vooraf in 64 richtingen per kleur getekend en daarna als kleine transparante sprites hergebruikt. Een lokale offscreen-tekenbenchmark met 600 vogels daalde van circa 12 naar 3 ms per frame; dit is alleen de tekenfase, niet een meting van het totale CPU-verbruik. De batterijlimiet is 18 FPS, zodat een gekozen instelling zoals 17 FPS niet stilzwijgend op 10 FPS blijft steken.

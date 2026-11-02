@@ -19,13 +19,13 @@ class Controls(QWidget):
         self.cfg=load();self.sliders={};self.labels={};self.debounce=QTimer(self);self.debounce.setSingleShot(True);self.debounce.timeout.connect(self.persist)
         layout=QVBoxLayout(self);layout.setContentsMargins(16,14,16,14);layout.setSpacing(8)
         title=QLabel('Flock settings');title.setStyleSheet('font-weight:bold;font-size:12pt');layout.addWidget(title)
-        rows=[('count','Birds','Number of birds'),('speed','Speed','How fast the flock moves'),('separation','Personal space','How strongly birds avoid one another'),('alignment','Follow direction','How strongly birds match their neighbours’ direction'),('cohesion','Stay together','How strongly birds move toward their neighbours'),('radius','Neighbour distance','How far each bird can see'),('size','Bird size','Size of each bird'),('fps','Smoothness','Frames per second; higher uses more power')]
+        rows=[('count','Birds','Number of birds'),('speed','Speed','How fast the flock moves'),('separation','Personal space','How strongly birds avoid one another'),('alignment','Follow direction','How strongly birds match their neighbours’ direction'),('cohesion','Stay together','How strongly birds move toward their neighbours'),('radius','Neighbour distance','How far each bird can see'),('size','Bird size','Size of each bird'),('fps','Smoothness','Frames per second; higher uses more power (battery limit: 18 FPS)')]
         for key,name,tip in rows:
             line=QHBoxLayout();label=QLabel(name);value=QLabel();value.setAlignment(Qt.AlignRight);line.addWidget(label);line.addWidget(value);layout.addLayout(line)
             slider=QSlider(Qt.Horizontal);slider.setRange(*LIMITS[key]);slider.setValue(self.cfg[key]);slider.setToolTip(tip);layout.addWidget(slider)
             self.labels[key]=value;self.sliders[key]=slider;self.update_label(key,slider.value())
             slider.valueChanged.connect(lambda v,k=key:self.changed(k,v))
-        note=QLabel('Pauses when fully covered • lower FPS on battery');note.setStyleSheet('color:#aeb9c8;font-size:8pt');layout.addWidget(note)
+        note=QLabel('Pauses when covered • battery limit: 18 FPS');note.setStyleSheet('color:#aeb9c8;font-size:8pt');layout.addWidget(note)
         buttons=QHBoxLayout();reset=QPushButton('Reset');reset.clicked.connect(self.reset);done=QPushButton('Done');done.clicked.connect(self.close);buttons.addWidget(reset);buttons.addWidget(done);layout.addLayout(buttons)
         self.adjustSize();pos=QCursor.pos();screen=QApplication.instance().screenAt(pos) or QApplication.primaryScreen();area=screen.availableGeometry()
         self.move(max(area.left(),min(pos.x()-self.width()//2,area.right()-self.width())),max(area.top(),screen.geometry().top()+43))
