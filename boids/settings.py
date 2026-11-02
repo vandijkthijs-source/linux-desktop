@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 PATH=Path.home()/'.config/desktop-boids/settings.json'
 DEFAULTS=dict(enabled=True,count=48,speed=48,separation=100,alignment=100,cohesion=100,radius=90,size=7,fps=15)
-LIMITS=dict(count=(16,160),speed=(15,120),separation=(0,200),alignment=(0,200),cohesion=(0,200),radius=(40,180),size=(4,14),fps=(10,24))
+LIMITS=dict(count=(16,600),speed=(15,120),separation=(0,200),alignment=(0,200),cohesion=(0,200),radius=(40,180),size=(4,14),fps=(10,24))
 def load():
     cfg=DEFAULTS.copy()
     try: data=json.loads(PATH.read_text())

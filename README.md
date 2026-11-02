@@ -3,7 +3,7 @@
 Boids als bewegende achtergrond en een kleine hond op een XFCE/Polybar-paneel. Gebaseerd op de werkende Xubuntu-installatie van november 2026, voor X11.
 
 - **Flock: ON/OFF** naast **Pup: ON/OFF**; klikken schakelt ze om.
-- Hover over Flock voor direct beschikbare schuifregelaars: aantal, snelheid, afstand houden, richting volgen, bij elkaar blijven, zichtafstand, grootte en FPS. Instellingen blijven lokaal bewaard.
+- Hover over Flock voor direct beschikbare schuifregelaars: aantal (16–600), snelheid, afstand houden, richting volgen, bij elkaar blijven, zichtafstand, grootte en FPS. Instellingen blijven lokaal bewaard.
 - De flock blijft onder apps en boven de wallpaper. Desktopiconen blijven aanklikbaar. Richtingsbesturing laat vogels met behouden snelheid wegdraaien van de rand, in plaats van tegen de grens af te remmen. Ze blijven onder het paneel en binnen het scherm.
 - Automatisch pauzeren na twee seconden volledig bedekt/fullscreen; hervatten zodra de desktop zichtbaar is. Op batterij maximaal 10 FPS.
 - Pup heeft beweging, slapen, interacties en een eigen rechtermuismenu. De paneelknop start/stopt het bestaande hondproces.
