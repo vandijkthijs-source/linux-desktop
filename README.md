@@ -4,7 +4,7 @@ Boids als bewegende achtergrond en een kleine hond op een XFCE/Polybar-paneel. G
 
 - **Flock: ON/OFF** naast **Pup: ON/OFF**; klikken schakelt ze om.
 - Hover over Flock voor direct beschikbare schuifregelaars: aantal, snelheid, afstand houden, richting volgen, bij elkaar blijven, zichtafstand, grootte en FPS. Instellingen blijven lokaal bewaard.
-- De flock blijft onder apps en boven de wallpaper. Desktopiconen blijven aanklikbaar. Voorspellende randbesturing houdt vogels onder het paneel en binnen het scherm.
+- De flock blijft onder apps en boven de wallpaper. Desktopiconen blijven aanklikbaar. Richtingsbesturing laat vogels met behouden snelheid wegdraaien van de rand, in plaats van tegen de grens af te remmen. Ze blijven onder het paneel en binnen het scherm.
 - Automatisch pauzeren na twee seconden volledig bedekt/fullscreen; hervatten zodra de desktop zichtbaar is. Op batterij maximaal 10 FPS.
 - Pup heeft beweging, slapen, interacties en een eigen rechtermuismenu. De paneelknop start/stopt het bestaande hondproces.
 - De optionele volledige paneelconfig bevat ook de bestaande snelle hovermenu's voor geluid, wifi en Bluetooth en verbergt het paneel bij fullscreen.
@@ -51,3 +51,10 @@ De bestaande Panel Pup-code heeft zijn MIT-licentie in `panel-pup/CODE_LICENSE.t
 ## Controle
 
 Syntax, Pup-gedragstests en een geïsoleerde installatie kunnen lokaal worden gecontroleerd. De actieve Xubuntu-versie is handmatig getest op hoverbediening, echte desktopklikken, het openen/sluiten van een map, de stabiele desktoplaag en pauzeren/hervatten bij fullscreen. Dit is geen garantie voor andere windowmanagers, meerdere schermen of Wayland. De flight area gebruikt momenteel het primaire scherm.
+
+Randbesturing bijgewerkt op 2 november 2026: hoekverandering per frame is begrensd, ook bij een frontale nadering van een rand. Head-on- en hoektests controleren verschillende snelheden en 10/24 FPS. Een integratiecontrole met de echte flockstap en 160 vogels simuleerde 60 seconden zonder harde grensbotsingen.
+
+```sh
+python3 -m unittest discover -s boids/tests -v
+python3 -m unittest discover -s panel-pup/tests -v
+```

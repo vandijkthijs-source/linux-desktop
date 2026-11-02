@@ -17,6 +17,7 @@ from PyQt5.QtGui import QColor, QPainter, QPolygonF, QRegion
 from PyQt5.QtWidgets import QApplication, QWidget
 from settings import load, save
 from controls import Controls
+from flock_motion import move_bird
 
 runtime = Path(os.environ.get('XDG_RUNTIME_DIR', '/tmp')) / ('desktop-boids-' + str(os.getuid()))
 runtime.mkdir(mode=0o700, exist_ok=True)
@@ -219,25 +220,9 @@ class Wallpaper(QWidget):
             if n:
                 vx+=((ax/n-vx)*.65*self.cfg['alignment']/100+cx/n*.35*self.cfg['cohesion']/100+sx*650*self.cfg['separation']/100)*dt
                 vy+=((ay/n-vy)*.65*self.cfg['alignment']/100+cy/n*.35*self.cfg['cohesion']/100+sy*650*self.cfg['separation']/100)*dt
-            # Anticipate walls and steer into the safe area well before arrival.
-            # Lookahead scales with speed, so fast birds can turn without bouncing.
-            desired_speed=self.cfg['speed']
-            margin=min(32,bounds.width()/4,bounds.height()/4)
-            lookahead=.35
-            future_x=px+vx*lookahead;future_y=py+vy*lookahead
-            wall_x=max(0,(bounds.left()+margin-future_x)/margin)-max(0,(future_x-bounds.right()+margin)/margin)
-            wall_y=max(0,(bounds.top()+margin-future_y)/margin)-max(0,(future_y-bounds.bottom()+margin)/margin)
-            vx+=wall_x*desired_speed*3*dt;vy+=wall_y*desired_speed*3*dt
-            speed=math.hypot(vx,vy) or 1
-            target=max(desired_speed*.7,min(desired_speed*1.4,speed));vx*=target/speed;vy*=target/speed
-            nx=px+vx*dt;ny=py+vy*dt
-            # A final safety envelope prevents panel overlap after resizing or
-            # extreme slider changes. Remove outward velocity rather than reflect.
-            if nx<bounds.left():nx=bounds.left();vx=max(0,vx)
-            if nx>bounds.right():nx=bounds.right();vx=min(0,vx)
-            if ny<bounds.top():ny=bounds.top();vy=max(0,vy)
-            if ny>bounds.bottom():ny=bounds.bottom();vy=min(0,vy)
-            b[:]=[nx,ny,vx,vy]
+            b[:]=move_bird(px,py,old[i][2],old[i][3],vx,vy,
+                (bounds.left(),bounds.top(),bounds.right(),bounds.bottom()),
+                dt,self.cfg['speed'],1 if i%2==0 else -1)
         self.update(); self.frames+=1; self.sim_seconds+=time.perf_counter()-begin
     def paintEvent(self,event):
         if not self.cfg['enabled']:return
