@@ -1,0 +1,6 @@
+#!/bin/sh
+# Avoid a second copy when an existing Compiz session is already running.
+pgrep -u "$(id -u)" -x compiz >/dev/null && exit 0
+mkdir -p "$HOME/.local/state/desktop-cube"
+/usr/bin/compiz --replace ccp >> "$HOME/.local/state/desktop-cube/compiz.log" 2>&1
+exec /usr/bin/xfwm4 --replace

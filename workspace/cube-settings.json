@@ -1,0 +1,77 @@
+{
+  "core": {
+    "hsize": 4,
+    "vsize": 1,
+    "show_desktop_key": "<Super>d"
+  },
+  "decor": {
+    "command": "gtk-window-decorator --replace --metacity-theme Arc-Dark"
+  },
+  "rotate": {
+    "speed": 2.5,
+    "acceleration": 5.0,
+    "timestep": 1.0,
+    "zoom": 0.55,
+    "edge_flip_pointer": false,
+    "rotate_left_key": "<Control><Alt>Left",
+    "rotate_right_key": "<Control><Alt>Right",
+    "rotate_left_window_key": "<Shift><Control><Alt>Left",
+    "rotate_right_window_key": "<Shift><Control><Alt>Right"
+  },
+  "cube": {
+    "skydome": true,
+    "skydome_gradient_start_color": [
+      5911,
+      6425,
+      8995,
+      65535
+    ],
+    "skydome_gradient_end_color": [
+      14135,
+      15163,
+      19789,
+      65535
+    ],
+    "active_opacity": 100.0,
+    "inactive_opacity": 100.0,
+    "top_color": [
+      5911,
+      6425,
+      8995,
+      65535
+    ],
+    "bottom_color": [
+      5911,
+      6425,
+      8995,
+      65535
+    ]
+  },
+  "cubeaddon": {
+    "deformation": 0,
+    "reflection": true,
+    "mode": 2,
+    "top_images": [],
+    "bottom_images": [],
+    "ground_color1": [
+      10280,
+      10794,
+      13878,
+      42000
+    ],
+    "ground_color2": [
+      5911,
+      6425,
+      8995,
+      0
+    ]
+  },
+  "blur": {
+    "alpha_blur": true,
+    "focus_blur": false,
+    "alpha_blur_match": "class=Rofi & title=rofi - window",
+    "filter": 1,
+    "gaussian_radius": 9,
+    "gaussian_strength": 0.8
+  }
+}

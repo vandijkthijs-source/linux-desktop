@@ -1,6 +1,6 @@
-# Linux Desktop — Flock & Pup
+# Linux Desktop — Flock, Pup & 3D-kubus
 
-Boids als bewegende achtergrond en een kleine hond op een XFCE/Polybar-paneel. Gebaseerd op de werkende Xubuntu-installatie van november 2026, voor X11.
+Boids als bewegende achtergrond, een kleine hond op een XFCE/Polybar-paneel en optioneel een 3D-werkruimtekubus met een compact glazen Alt + Tab-menu. Gebaseerd op de werkende Xubuntu-installatie van november 2026, voor X11.
 
 - **Flock: ON/OFF** naast **Pup: ON/OFF**; klikken schakelt ze om.
 - Hover over Flock voor direct beschikbare schuifregelaars: aantal (16–600), snelheid, afstand houden, richting volgen, bij elkaar blijven, zichtafstand, grootte en FPS. Instellingen blijven lokaal bewaard.
@@ -8,6 +8,14 @@ Boids als bewegende achtergrond en een kleine hond op een XFCE/Polybar-paneel. G
 - Automatisch pauzeren na twee seconden volledig bedekt/fullscreen; hervatten zodra de desktop zichtbaar is. Op batterij maximaal 18 FPS.
 - Pup heeft beweging, slapen, interacties en een eigen rechtermuismenu. De paneelknop start/stopt het bestaande hondproces.
 - De optionele volledige paneelconfig bevat ook de bestaande snelle hovermenu's voor geluid, wifi en Bluetooth en verbergt het paneel bij fullscreen.
+
+## Nieuw op 8 november 2026
+
+- [3D-kubus en glazen Alt + Tab](workspace/README.md): vier vlakken, draaien met Ctrl + Alt + pijlen, vrij draaien met de muis en een Rofi-menu met uitsluitend icoontjes. Compact matglas met echte achtergrondvervaging vervangt de knipperende Compiz-switcherrand. De vaste 16:9-menuvorm is vervallen.
+- [Desktop-snelkoppelingen](desktop/README.md): Word/PowerPoint online, Google Chrome en Immich met hun eigen iconen. LibreOffice Impress was al aanwezig en krijgt geen desktopstarter.
+- Het eerdere Shift + touchpad-scroll-experiment is volledig teruggedraaid. Er wordt geen touchpad-remapper meegeleverd.
+
+De kubus is een **afzonderlijke, optionele** installatie. De bestaande Flock/Pup-installer hieronder activeert geen andere windowmanager.
 
 ## Installeren
 
@@ -38,6 +46,8 @@ Pup-configuratie: `~/.local/share/panel-pup/config.json`. Kies een lege paneelst
 - `boids/`: simulatie, voorgebouwde instellingenpopup en gevalideerde voorkeuren.
 - `panel-pup/`: hondapp, gedragstests en downloadhelper voor sprites.
 - `panel/`: integratie met Polybar/Rofi, beide aan/uitbedieningen en hoverwatcher.
+- `workspace/`: optionele Compiz-configuratie, glazen Rofi-switcher en installatie met back-ups.
+- `desktop/`: portable installatie van de vier desktopstarters en officiële icoondownloads.
 - `install.py`: installatie met back-ups; `--home` laat een geïsoleerde testinstallatie toe.
 
 De installer meldt waar de back-ups staan. Paneelbestanden die door de bestaande paneelinstaller zijn vervangen kunnen worden hersteld met `python3 ~/.local/share/linux-desktop/panel/restore.py PAD_NAAR_BACKUP`. Daarna Polybar en de hoverwatcher herstarten.

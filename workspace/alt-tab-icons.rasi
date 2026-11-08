@@ -1,0 +1,52 @@
+configuration {
+  show-icons: true;
+  icon-theme: "Papirus";
+  window-format: "{c}";
+  sort: false;
+}
+* {
+  background-color: transparent;
+  text-color: #ffffff;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+window {
+  width: 360px;
+  location: center;
+  anchor: center;
+  background-color: #eee9f376;
+  border: 1px;
+  border-color: #ffffff80;
+  border-radius: 20px;
+  padding: 12px;
+}
+mainbox { children: [ listview ]; }
+listview {
+  columns: 4;
+  lines: 1;
+  fixed-height: false;
+  spacing: 10px;
+  scrollbar: false;
+}
+element {
+  orientation: vertical;
+  padding: 12px;
+  border: 1px;
+  border-color: #ffffff00;
+  border-radius: 12px;
+  children: [ element-icon ];
+}
+element selected.normal {
+  background-color: #ffffff45;
+  border-color: #ffffff9c;
+}
+element selected.active {
+  background-color: #ffffff45;
+  border-color: #ffffff9c;
+}
+element-icon { size: 56px; horizontal-align: 0.5; }
+element-text { enabled: false; }
+inputbar { enabled: false; }
+mode-switcher { enabled: false; }
+message { enabled: false; }
