@@ -4,7 +4,7 @@ Werkende configuratie van 8 november 2026 voor XFCE/Xubuntu op **X11**. Compiz v
 
 ## Benodigd
 
-Compiz 0.9 met `compiz-plugins`, `compizconfig-settings-manager`, de Python-module `compizconfig`, `gtk-window-decorator`, het Metacity-thema **Arc-Dark**, Rofi 2.0, xdotool, wmctrl, procps/pgrep, Python 3 en libX11. Beschikbaarheid/pakketnamen verschillen per distributie. Gebruik `/usr/bin/python3` zodat distributiemodules beschikbaar zijn.
+Compiz 0.9 met `compiz-plugins`, `compizconfig-settings-manager`, de Python-module `compizconfig`, `gtk-window-decorator`, het Metacity-thema **Arc-Dark**, PyQt5, xdotool, wmctrl, procps/pgrep, Python 3 en libX11. Een C-compiler (`cc`) maakt de sneltoetsaanroep extra snel; zonder compiler wordt de Python-terugval gebruikt. Beschikbaarheid/pakketnamen verschillen per distributie. Gebruik `/usr/bin/python3` zodat distributiemodules beschikbaar zijn.
 
 ## Installeren en activeren
 
@@ -30,9 +30,11 @@ Vier horizontale vlakken vervangen de oude workspace-indeling. Test dit eerst me
 - **Ctrl + Alt + slepen met linkermuisknop**: vrij draaien.
 - **Alt + Tab** en **Alt + Shift + Tab**: vooruit/achteruit kiezen; Alt loslaten kiest het venster, Escape annuleert.
 
-De kubus heeft effen donkere boven-/onderkanten, een donkere achtergrond en een subtiele reflectie. De huidige Alt + Tab-opmaak is compact, ongeveer **360 × 108 pixels**, met uitsluitend icoontjes, afgeronde hoeken, een zachte lichte glaslaag en achtergrondvervaging. De eerdere vaste 16:9-verhouding is vervallen. De grootte kan veranderen met meer vensters of andere schaalinstellingen.
+De kubus heeft effen donkere boven-/onderkanten, een donkere achtergrond en een subtiele reflectie. De huidige Alt + Tab-opmaak is compact, ongeveer **324 × 108 pixels**, met uitsluitend icoontjes, afgeronde hoeken, een zachte lichte glaslaag en achtergrondvervaging. De eerdere vaste 16:9-verhouding is vervallen. De grootte kan veranderen met meer vensters of andere schaalinstellingen.
 
-De standaard Compiz-switchers tekenden bij herhaald schakelen een steeds dikkere/knipperende rand. Daarom gebruikt deze configuratie Rofi met een eigen achtergrond. De vervaging is beperkt tot Rofi's venstermenu (`class=Rofi & title=rofi - window`); gewone appvensters worden niet vervaagd. De korte Python-helper leest alleen de Alt-status zolang het menu open is en stuurt de bevestiging uitsluitend naar zijn eigen Rofi-venster. Hij verandert geen muis- of toetsmapping en draait niet als permanente achtergrondservice.
+De standaard Compiz-switchers tekenden bij herhaald schakelen een steeds dikkere/knipperende rand. De eerste vervanging gebruikte Rofi; de definitieve versie gebruikt een **vooraf geladen PyQt5-menu** om de opstartvertraging bij elke Alt + Tab weg te nemen. App-icoontjes blijven in het geheugen. Een minimale C-aanroep verstuurt alleen een lokaal socketbericht; de Python-client kan de service starten als die nog niet draait. Op de actieve laptop verscheen het menu in korte toetsproeven na ongeveer 70–80 ms, inclusief aanroep en controle; dit is geen garantie voor andere systemen.
+
+De lichte glasvervaging is beperkt tot `class=DesktopAltTab & title=Desktop Alt Tab`. De selectie heeft een duidelijke blauwe rand en bijna wit vlak. De service blijft op de achtergrond beschikbaar, maar leest Alt en grijpt het toetsenbord uitsluitend zolang het menu open is. Escape annuleert en geeft het toetsenbord meteen terug; loslaten van Alt kiest het venster. Er worden geen muis- of toetsmappings gewijzigd. Eén korte rustcontrole mat nul extra CPU-ticks in één seconde; het geheugenverbruik op dat moment staat niet vast voor andere systemen. Met `--autostart` worden zowel de kubus als de menuservice bij aanmelden klaargezet.
 
 `desktop-cube-session` voorkomt dubbele Compiz-processen en start Xfwm4 als Compiz stopt. Dit vangt een afgesloten/gecrashte Compiz op; het is geen watchdog voor een vastgelopen compositor.
 
@@ -41,11 +43,11 @@ De standaard Compiz-switchers tekenden bij herhaald schakelen een steeds dikkere
 Schakel eerst de kubus bij aanmelden uit en ga terug naar Xfwm4:
 
 ```sh
-rm -f ~/.config/autostart/desktop-cube.desktop
+rm -f ~/.config/autostart/desktop-cube.desktop ~/.config/autostart/desktop-alt-tab-service.desktop
 xfwm4 --replace
 ```
 
-De sessiehelper kan daarbij zelf ook terugvallen op Xfwm4. Herstel vervolgens je gewenste Compiz-profiel uit de door de installer gemelde map `~/.local/state/desktop-cube-backups/…/compiz-1/`. Gebruik `manifest.json` om eerdere versies van de gekopieerde scripts en het Rofi-thema terug te zetten. Een manifestregel zonder eerdere back-up betekent dat het bestand nieuw was. Als je teruggaat naar Xfwm4, kun je het oude aantal workspaces weer instellen in XFCE; de kubus gebruikt één groot bureaublad met vier viewports.
+De sessiehelper kan daarbij zelf ook terugvallen op Xfwm4. Stop desgewenst de menuservice met een `quit`-bericht naar `$XDG_RUNTIME_DIR/desktop-alt-tab-warm.sock` voordat je die bestanden terugzet. Herstel vervolgens je gewenste Compiz-profiel uit de door de installer gemelde map `~/.local/state/desktop-cube-backups/…/compiz-1/`. Gebruik `manifest.json` om eerdere versies van de gekopieerde scripts en het Rofi-thema terug te zetten. Een manifestregel zonder eerdere back-up betekent dat het bestand nieuw was. Als je teruggaat naar Xfwm4, kun je het oude aantal workspaces weer instellen in XFCE; de kubus gebruikt één groot bureaublad met vier viewports.
 
 ## Gecontroleerd
 

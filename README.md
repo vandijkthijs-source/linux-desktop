@@ -11,7 +11,7 @@ Boids als bewegende achtergrond, een kleine hond op een XFCE/Polybar-paneel en o
 
 ## Nieuw op 8 november 2026
 
-- [3D-kubus en glazen Alt + Tab](workspace/README.md): vier vlakken, draaien met Ctrl + Alt + pijlen, vrij draaien met de muis en een Rofi-menu met uitsluitend icoontjes. Compact matglas met echte achtergrondvervaging vervangt de knipperende Compiz-switcherrand. De vaste 16:9-menuvorm is vervallen.
+- [3D-kubus en glazen Alt + Tab](workspace/README.md): vier vlakken, draaien met Ctrl + Alt + pijlen, vrij draaien met de muis en een vooraf geladen Qt-menu met uitsluitend icoontjes. Compact matglas met echte achtergrondvervaging vervangt de knipperende Compiz-switcherrand. De vaste 16:9-menuvorm is vervallen.
 - [Desktop-snelkoppelingen](desktop/README.md): Word/PowerPoint online, Google Chrome en Immich met hun eigen iconen. LibreOffice Impress was al aanwezig en krijgt geen desktopstarter.
 - Het eerdere Shift + touchpad-scroll-experiment is volledig teruggedraaid. Er wordt geen touchpad-remapper meegeleverd.
 
@@ -46,7 +46,7 @@ Pup-configuratie: `~/.local/share/panel-pup/config.json`. Kies een lege paneelst
 - `boids/`: simulatie, voorgebouwde instellingenpopup en gevalideerde voorkeuren.
 - `panel-pup/`: hondapp, gedragstests en downloadhelper voor sprites.
 - `panel/`: integratie met Polybar/Rofi, beide aan/uitbedieningen en hoverwatcher.
-- `workspace/`: optionele Compiz-configuratie, glazen Rofi-switcher en installatie met back-ups.
+- `workspace/`: optionele Compiz-configuratie, vooraf geladen glazen Qt-switcher en installatie met back-ups.
 - `desktop/`: portable installatie van de vier desktopstarters en officiële icoondownloads.
 - `install.py`: installatie met back-ups; `--home` laat een geïsoleerde testinstallatie toe.
 

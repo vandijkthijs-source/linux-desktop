@@ -69,9 +69,10 @@
   "blur": {
     "alpha_blur": true,
     "focus_blur": false,
-    "alpha_blur_match": "class=Rofi & title=rofi - window",
-    "filter": 1,
+    "alpha_blur_match": "class=DesktopAltTab & title=Desktop Alt Tab",
+    "filter": 2,
     "gaussian_radius": 9,
-    "gaussian_strength": 0.8
+    "gaussian_strength": 0.8,
+    "mipmap_lod": 3.0
   }
 }

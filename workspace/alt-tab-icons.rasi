@@ -31,19 +31,19 @@ listview {
 }
 element {
   orientation: vertical;
-  padding: 12px;
-  border: 1px;
+  padding: 10px;
+  border: 3px;
   border-color: #ffffff00;
   border-radius: 12px;
   children: [ element-icon ];
 }
 element selected.normal {
-  background-color: #ffffff45;
-  border-color: #ffffff9c;
+  background-color: #ffffffe8;
+  border-color: #476faeff;
 }
 element selected.active {
-  background-color: #ffffff45;
-  border-color: #ffffff9c;
+  background-color: #ffffffe8;
+  border-color: #476faeff;
 }
 element-icon { size: 56px; horizontal-align: 0.5; }
 element-text { enabled: false; }

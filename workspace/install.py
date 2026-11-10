@@ -5,6 +5,8 @@ from datetime import datetime
 import json
 from pathlib import Path
 import shutil
+import subprocess
+import tempfile
 
 ROOT = Path(__file__).resolve().parent
 REQUIRED = ['core', 'composite', 'opengl', 'compiztoolbox', 'decor', 'regex',
@@ -62,8 +64,18 @@ def main():
         profile = home / '.config/compiz-1'
         if profile.exists():
             shutil.copytree(profile, backup / 'compiz-1')
-    for name in ['desktop-alt-tab', 'desktop-cube-session']:
+    for name in ['desktop-cube-session', 'desktop-alt-tab-service.py']:
         put(ROOT / name, home / '.local/bin' / name)
+    put(ROOT / 'desktop-alt-tab', home / '.local/bin/desktop-alt-tab-client.py')
+    with tempfile.TemporaryDirectory(prefix='desktop-alt-tab-build-') as build:
+        compiler = shutil.which('cc')
+        if compiler:
+            binary = Path(build) / 'desktop-alt-tab'
+            subprocess.run([compiler, '-O2', '-Wall', '-Wextra', '-Werror',
+                            str(ROOT / 'desktop-alt-tab.c'), '-o', str(binary)], check=True)
+            put(binary, home / '.local/bin/desktop-alt-tab')
+        else:
+            put(ROOT / 'desktop-alt-tab', home / '.local/bin/desktop-alt-tab')
     put(ROOT / 'alt-tab-icons.rasi', home / '.config/rofi/alt-tab-icons.rasi')
     if context:
         old_plugins = context.Plugins['core'].Screen['active_plugins'].Value
@@ -84,6 +96,10 @@ def main():
         put(None, home / '.config/autostart/desktop-cube.desktop',
             '[Desktop Entry]\nType=Application\nName=Desktop Cube\n'
             f'Exec="{command}"\nOnlyShowIn=XFCE;\nTerminal=false\nX-GNOME-Autostart-enabled=true\n')
+        service = str(home / '.local/bin/desktop-alt-tab-service.py').replace('\\', '\\\\').replace('"', '\\"')
+        put(None, home / '.config/autostart/desktop-alt-tab-service.desktop',
+            '[Desktop Entry]\nType=Application\nName=Preloaded window switcher\n'
+            f'Exec=/usr/bin/python3 "{service}"\nOnlyShowIn=XFCE;\nTerminal=false\nX-GNOME-Autostart-enabled=true\n')
     (backup / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     print('Installed cube/menu files. No window manager was started or restarted.')
     print('Backup:', backup)
